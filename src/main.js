@@ -17,6 +17,19 @@ $(function () {
     query()
   });
 
+  $('#depthPicker').on('change', function () {
+    params.depth = $('#depthPicker').val()
+    query()
+  })
+
+  $('#breadthPicker').on('change', function () {
+    params.breadth = $('#breadthPicker').val()
+    query()
+  })
+
+  $('#depthPicker').val(params.depth)
+  $('#breadthPicker').val(params.breadth)
+
   var initialDate = $('#datePicker').val()
   params.from = initialDate.from
   params.to = initialDate.to
