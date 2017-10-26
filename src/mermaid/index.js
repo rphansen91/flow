@@ -1,11 +1,19 @@
 var defineGraph = require('./define')
 
 module.exports = function (direction='TD', data) {
-  return new Promise(function (res) {
+  return Promise.resolve()
+  .then(function () {
     var level = 0
     var definition = defineGraph(data, level)
-    var graph = 'graph ' + direction + '\n' + definition
-    // console.log(graph)
-    mermaid.render('mermaid', graph, res)
+    return 'graph ' + direction + '\n' + definition
+  })
+  .then(function (graph) {
+    mermaid.parse(graph)
+    return graph
+  })
+  .then(function (graph) {
+    return new Promise(function (res) {
+      mermaid.render('mermaid', graph, res)
+    })
   })
 }
