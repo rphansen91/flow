@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>User Flow</title>
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/css/reset.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.css">
+    <link rel="stylesheet" href="./assets/css/styles.css">
+    <script src="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.js"></script>
+    <script src="https://unpkg.com/mermaid@7.1.0/dist/mermaid.min.js"></script>
+    <script>
+      var direction = 'LR'
+      var data = [{"Notification Success":{"count":186,"next":{"New Feature":{"count":30,"next":{"Try new feature":{"count":11,"next":{"Try new feature":{"count":1,"next":{}},"Change Time":{"count":7,"next":{}},"Small Talk":{"count":2,"next":{}}}},"Small Talk":{"count":1,"next":{"Small Talk":{"count":1,"next":{}}}}}},"Add Item":{"count":21,"next":{"New Feature":{"count":3,"next":{}},"Send Daily Text":{"count":2,"next":{"Read Daily Text":{"count":1,"next":{}}}},"Reminder Confirmation":{"count":4,"next":{"New Feature":{"count":1,"next":{}},"Add Item":{"count":1,"next":{}}}},"Delete Item":{"count":7,"next":{"New Feature":{"count":1,"next":{}},"Help Section":{"count":2,"next":{}},"Delete Item":{"count":2,"next":{}}}},"Add Item":{"count":1,"next":{}},"Help Section":{"count":1,"next":{"Delete Item":{"count":1,"next":{}}}}}},"Small Talk":{"count":22,"next":{"Add Item":{"count":5,"next":{"Delete Item":{"count":3,"next":{}},"New Feature":{"count":1,"next":{}}}},"Help Section":{"count":2,"next":{"Small Talk":{"count":1,"next":{}}}},"New Feature":{"count":3,"next":{"Try new feature":{"count":1,"next":{}}}},"Small Talk":{"count":3,"next":{"Small Talk":{"count":1,"next":{}}}},"Show List":{"count":1,"next":{"Add Item":{"count":1,"next":{}}}}}},"Read Daily Text":{"count":6,"next":{"Read Notification":{"count":6,"next":{"Help Section":{"count":1,"next":{}},"New Feature":{"count":2,"next":{}},"Show List":{"count":1,"next":{}}}}}},"Reminder Confirmation":{"count":15,"next":{"Add Item":{"count":14,"next":{"New Feature":{"count":3,"next":{}},"Reminder Confirmation":{"count":1,"next":{}},"Send Daily Text":{"count":1,"next":{}},"Help Section":{"count":1,"next":{}}}},"Small Talk":{"count":1,"next":{"Add Item":{"count":1,"next":{}}}}}},"Help Section":{"count":8,"next":{"Reminder Confirmation":{"count":1,"next":{"Add Item":{"count":1,"next":{}}}}}},"Show List":{"count":7,"next":{"Help Section":{"count":2,"next":{}},"New Feature":{"count":2,"next":{"Add Item":{"count":1,"next":{}},"Try new feature":{"count":1,"next":{}}}},"Add Item":{"count":1,"next":{"Add Item":{"count":1,"next":{}}}}}},"Read Notification":{"count":2,"next":{"Read Daily Text":{"count":2,"next":{"New Feature":{"count":2,"next":{}}}}}},"Sent Notification":{"count":1,"next":{"Read Notification":{"count":1,"next":{"Notification Success":{"count":1,"next":{}}}}}}}}}]
+    </script>
+  </head>
+  <body>
+    <body class="mixpanel-platform-body">
+      <div class="mixpanel-platform-section" style="margin: 0">
+          <div id="eventPicker" style="float: left;"></div>
+          <div id="datePicker" style="float: left;margin-left: 7px;"></div>
+          <div style="clear: both;"></div>
+      </div>
+      <div id="flow" style="padding-top: 35px;min-height:100vh;"></div>
+    </body>
+    <script src="./assets/js/jquery.panzoom.js"></script>
+    <script src="./assets/js/main.js"></script>
+  </body>
+</html>

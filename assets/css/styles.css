@@ -1,0 +1,4 @@
+#flow .node circle, #flow .node ellipse, #flow .node polygon, #flow .node rect {
+  fill: #F4F9FD;
+  stroke: rgba(108,133,159,0.4);
+}
