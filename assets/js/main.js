@@ -23,14 +23,15 @@ function pipe (fns) {
 }
 
 },{}],2:[function(require,module,exports){
+var zoom = require('./ui/zoom')
 var flow = require('./mixpanel').flow
-var mermaid = require('./mermaid')
 var format = require('./utils/format')
-var zoom = require('./utils/zoom')
-var filterFlow = require('./filters/flow')
+var visualize = require('./visualize')
+var worker = new Worker('./assets/js/worker.js')
 
 $(function () {
   var params = { from: '', to: '', event: '', depth: 3, breadth: 3 }
+
   $('#datePicker').MPDatepicker().on('change', function(event, range) {
     params.from = range.from
     params.to = range.to
@@ -61,7 +62,7 @@ $(function () {
 
   function query () {
     if (!valid(params)) return
-    visualize(params)
+    visualizer(params)
   }
 
   function valid () {
@@ -71,8 +72,10 @@ $(function () {
   }
 });
 
-function visualize (params) {
-  flow({
+function visualizer (params) {
+  var labels = initLabels()
+
+  return flow({
     from_date: format.date(params.from),
     to_date: format.date(params.to),
     event: params.event,
@@ -81,21 +84,10 @@ function visualize (params) {
   .then(function (data) {
     return data[0]
   })
-  .then(filterFlow(function (events) {
-    return Object.keys(events)
-    .sort(function (a, b) {
-      return events[b].count - events[a].count
-    })
-    .slice(0, params.breadth) // TAKE TOP 3 EVENTS
-    .reduce(function (acc, c) {
-      acc[c] = events[c]
-      return acc
-    }, {})
-  }))
-  .then(function (data) {
-    return mermaid('TD', data)
-  })
+  .then(visualize(params, labels.initLabel))
   .then(render($('#flow')))
+  .then(labels.initAll)
+  .catch(displayError($('#error')))
 }
 
 function render (container$) {
@@ -106,16 +98,97 @@ function render (container$) {
   }
 }
 
-},{"./filters/flow":1,"./mermaid":4,"./mixpanel":6,"./utils/format":8,"./utils/zoom":9}],3:[function(require,module,exports){
-module.exports = function define (d, l) {
+function displayError (container$) {
+  return function (err) {
+    console.log(err)
+  }
+}
+
+function initLabels () {
+  var labels = []
+
+  return {
+    initLabel: function (layer, events) {
+      labels.push({
+        layer,
+        events
+      })
+    },
+    initAll: function () {
+      labels.map(function (label) {
+        var node = $('#' + label.layer)
+        var original = node.attr('class')
+        node.on('click', displayEvents(label))
+        node.on('mouseenter', setActive(true))
+        node.on('mouseleave', setActive(false))
+
+        function setActive (bool) {
+          return function () {
+            if (bool) {
+              node.attr('class', [original, 'active'].join(' '))
+            } else {
+              node.attr('class', original)
+            }
+          }
+        }
+      })
+    }
+  }
+}
+
+function displayEvents (label) {
+  return function (event) {
+    var element = $('#modal')
+    displayLabel(label, element)
+    element.modal()
+  }
+}
+
+
+function displayLabel (label, element) {
+  var keys = _.keys(_.first(label.events)).filter(validProp)
+  var items = _.map(keys, function (key) {
+    return { value: key, label: key }
+  })
+
+  var chart = $('<div>').MPChart({ chartType: 'bar' })
+  var selecter = $('<div>').MPSelect({items: items})
+  selecter.css({ marginTop: 14 })
+
+  element.html('')
+  element.append(chart)
+  element.append(selecter)
+
+  handle(items[0] && items[0].value)
+  selecter.on('change', function (e, selected) {
+    handle(selected)
+  })
+
+  function handle (selected) {
+    chart.MPChart('setData', label.events.reduce(function (acc, c) {
+      if (!acc[c[selected]]) acc[c[selected]] = 0
+      acc[c[selected]]++
+      return acc
+    }, {}));
+  }
+}
+
+function validProp (prop) {
+  var ignore = { mp_lib: true }
+  return !ignore[prop]
+}
+
+},{"./mixpanel":6,"./ui/zoom":8,"./utils/format":9,"./visualize":10}],3:[function(require,module,exports){
+module.exports = function define (d, l, fn) {
   if (!d) return ''
   return Object.keys(d)
   .reduce((g, key) => {
+    fn(nodeId(l, key), d[key].events)
     return g + Object.keys(d[key].next || {})
     .map(next => {
       return nodeId(l, key) + nodeContent(key, d[key].count) + ' --> ' + nodeId(l+key, next) + nodeContent(next, d[key].next[next].count) + '\n'
     })
-    .join('') + define(d[key].next, l + key)
+    .join('') + define(d[key].next, l + key, fn)
   }, '')
 }
 
@@ -130,11 +203,11 @@ function nodeContent (name, count) {
 },{}],4:[function(require,module,exports){
 var defineGraph = require('./define')
 
-module.exports = function (direction='TD', data) {
+module.exports = function (direction='TD', data, cb) {
+  cb = typeof cb === 'function' ? cb : function () {}
   return Promise.resolve()
   .then(function () {
-    var level = 0
-    var definition = defineGraph(data, level)
+    var definition = defineGraph(data, '', cb)
     return 'graph ' + direction + '\n' + definition
   })
   .then(function (graph) {
@@ -169,9 +242,10 @@ module.exports = function (params) {
         }
         flow.depth++
         flow.current[e.name] =
-          flow.current[e.name] || {'count': 0, 'next': {}}
+          flow.current[e.name] || {'count': 0, 'events': [], 'next': {}}
 
         flow.current[e.name].count++
+        flow.current[e.name].events = [JSON.parse(JSON.stringify(e.properties))]
         flow.current = flow.current[e.name].next
       }
       return flow
@@ -181,8 +255,42 @@ module.exports = function (params) {
       delete item.value.current
       return item.value
     })
-    .reduce(mixpanel.reducer.object_merge())
-  }`
+    .reduce(merger())
+  }
+
+  function merger () {
+    return function(accumulators, items) {
+      accumulators = fix_reducer_signature(accumulators);
+      var ret = {};
+      var input = accumulators.concat(items);
+      for (var i = 0; i < input.length; ++i) {
+        merge(ret, input[i]);
+      }
+      return ret;
+    }
+  }
+  function merge(d1, d2) {
+  for (var key in d2) {
+      if (d2.hasOwnProperty(key)) {
+          var v1 = d1[key];
+          var v2 = d2[key];
+          if (!(key in d1)) {
+              d1[key] = v2;
+        } else if (typeof v1 === "number" && typeof v2 === "number") {
+              d1[key] += v2;
+        } else if (typeof v1 === "string" && typeof v2 === "string") {
+              d1[key] += v2;
+        } else if (_.isArray(v1) && _.isArray(v2)) {
+              d1[key] = d1[key].concat(v2);
+        } else if (typeof v1 === "object" && typeof v2 === "object") {
+              merge(v1, v2);
+        } else {
+              throw new TypeError("Mismatch types for key: " + key + " " + JSON.stringify(v1) + " " + JSON.stringify(v2));
+        }
+    }
+  }
+}
+  `
 }
 
 },{}],6:[function(require,module,exports){
@@ -207,12 +315,6 @@ module.exports = function (script) {
 }
 
 },{}],8:[function(require,module,exports){
-module.exports.date = function (d) {
-  var date = new Date(d)
-  return [date.getFullYear(), date.getMonth() + 1, date.getDate()].join('-')
-}
-
-},{}],9:[function(require,module,exports){
 module.exports = function (container$) {
   var graphic$ = container$.children().first()
   graphic$.css('max-width', '100%')
@@ -228,15 +330,36 @@ module.exports = function (container$) {
       focal: e
     })
   })
-
-  container$.on('dblclick', function (e) {
-    e.preventDefault()
-    graphic$.panzoom('zoom', false, {
-      increment: 2,
-      animate: true,
-      focal: e
-    })
-  })
 }
 
-},{}]},{},[2]);
+},{}],9:[function(require,module,exports){
+module.exports.date = function (d) {
+  var date = new Date(d)
+  return [date.getFullYear(), date.getMonth() + 1, date.getDate()].join('-')
+}
+
+},{}],10:[function(require,module,exports){
+var filterFlow = require('./filters/flow')
+var mermaid = require('./mermaid')
+
+module.exports = function (params, nodeCb) {
+  return function (data) {
+    return Promise.resolve(data)
+    .then(filterFlow(function (events) {
+      return Object.keys(events)
+      .sort(function (a, b) {
+        return events[b].count - events[a].count
+      })
+      .slice(0, params.breadth) // TAKE TOP 3 EVENTS
+      .reduce(function (acc, c) {
+        acc[c] = events[c]
+        return acc
+      }, {})
+    }))
+    .then(function (data) {
+      return mermaid('TD', data, nodeCb)
+    })
+  }
+}
+
+},{"./filters/flow":1,"./mermaid":4}]},{},[2]);

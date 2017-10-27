@@ -13,13 +13,4 @@ module.exports = function (container$) {
       focal: e
     })
   })
-
-  container$.on('dblclick', function (e) {
-    e.preventDefault()
-    graphic$.panzoom('zoom', false, {
-      increment: 2,
-      animate: true,
-      focal: e
-    })
-  })
 }
