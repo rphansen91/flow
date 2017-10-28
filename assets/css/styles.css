@@ -1,9 +1,14 @@
 body {}
 
-canvas {
+#loader {
 	position: absolute;
 	top: 0;
-	left: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: auto;
+  height: 100px;
+  width: 100px;
 }
 
 .content {
@@ -58,7 +63,7 @@ canvas {
   margin-right: 7px;
 }
 
-.add-btn {
+.add-btn, .del-btn {
   background-image: linear-gradient(0deg,#f4f9fd,#fff);
   border: 1px solid #bdc9d6;
   border-radius: 50%;

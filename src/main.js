@@ -6,29 +6,31 @@ var loader = require('./ui/loader')(canvas)
 var flow = require('./mixpanel').flow
 var format = require('./utils/format')
 var pipe = require('./utils/pipe')
-var qs = require('./utils/qs')
+var hash = require('./utils/hash')
 var visualize = require('./visualize')
 
 $(function () {
-  var query = qs.get()
+  var query = hash.get()
   var initial = {
     event: query.event || '',
-    from: query.from ? new Date(Number(query.from)) : '',
-    to: query.to ? new Date(Number(query.to)) : '',
+    from: query.from ? new Date(Number(query.from)) : new Date(),
+    to: query.to ? new Date(Number(query.to)) : new Date(),
     depth: Number(query.depth) || 3,
     breadth: Number(query.breadth) || 3,
-    filters: query.filters ? JSON.parse(query.filters) : []
+    filters: query.filters || []
   }
 
-  // visualizer(initial)
   controls(initial, function (params) {
     console.log(params)
     visualizer(params)
-    qs.set(Object.assign({}, params, {
+    hash.set(Object.assign({}, params, {
       from: params.from.valueOf(),
-      to: params.to.valueOf(),
-      filters: JSON.stringify(params.filters)
+      to: params.to.valueOf()
     }))
+  })
+  .then(function () {
+    if (!initial.event) return loader.stop()
+    visualizer(initial)
   })
 });
 

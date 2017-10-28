@@ -1,3 +1,5 @@
+var wait = require('../utils/wait')
+
 module.exports = function (params, changed) {
   var onChange = throttle(changed, 300)
   var range$ = $('#datePicker').MPDatepicker()
@@ -6,25 +8,31 @@ module.exports = function (params, changed) {
   var breadth$ = $('#breadthPicker')
   var add$ = $('#add')
 
-  setTimeout(function () {
-    // SET DEFAULTS
+  return Promise.resolve()
+  .then(wait(1000))
+  .then(function () {
     range$.val(params)
     event$.val(params.event)
     depth$.val(params.depth)
     breadth$.val(params.breadth)
-    _.map(params.filters).map(function (_, i) {
-      addFilter(i)
-    })
-
+    return Promise.all(_.map(params.filters, function (_, i) {
+      return addFilter(i)
+    }))
+  })
+  .then(wait(1000))
+  .then(function () {
     // LISTENERS
     range$.on('change', setRange)
     event$.on('change', setEvent)
     depth$.on('change', setParam('depth'))
     breadth$.on('change', setParam('breadth'))
     add$.on('click', function () {
-      addFilter(params.filters.length)
+      var i = params.filters.length
+      addFilter(i).then(function () {
+        console.log('Added')
+      })
     })
-  }, 1000)
+  })
 
   function setRange (ev, range) {
     params.from = range.from
@@ -46,14 +54,24 @@ module.exports = function (params, changed) {
   function addFilter (i) {
     var group = inputGroup()
     group.setEvent(params.event)
-    setTimeout(function () {
-      group.val(params.filters[i])
-    }, 1000)
-    group.changed(function (value) {
-      params.filters[i] = value
-      onChange(params)
-    })
     $('#props').append(group[0])
+
+    return Promise.resolve()
+    .then(wait(1000))
+    .then(function () {
+      group.val(params.filters[i])
+    })
+    .then(wait(1000))
+    .then(function () {
+      group.changed(function (value) {
+        params.filters[i] = value
+        onChange(params)
+      })
+      group.removed(function () {
+        params.filters.splice(i, 1)
+        onChange(params)
+      })
+    })
   }
 }
 
@@ -68,33 +86,37 @@ function throttle (cb, time) {
 }
 
 function inputGroup () {
-  var ls = []
+  var ls = [], rs = []
   var group$ = $('<div>').addClass('group')
   var prop$ = $('<div>').addClass('selecter').MPPropertySelect()
   var cont$ = $('<div>').attr('class', 'selecter mixpanel-platform-input-date mixpanel-platform-input')
   var input$ = $('<input>').attr('class', 'rounded_dropdown_label dropdown_label_widget')
+  var remove$ = $('<div>').attr('class', 'selecter del-btn').append($('<i>').attr('class', 'fa fa-trash-o fa-lg'))
   var dispatch = throttle(function () {
     var value = parse()
     ls.map(function (cb) {
       cb(value)
     })
   }, 300)
+  var remove = function () {
+    group$.remove()
+    rs.map(function (cb) { cb() })
+  }
 
   prop$.on('change', dispatch)
   input$.on('change', dispatch)
+  remove$.on('click', remove)
   cont$.append(input$)
-  group$.append(prop$).append(cont$).append($('<div>').css('clear', 'both'))
+  group$.append(prop$).append(cont$).append(remove$).append($('<div>').css('clear', 'both'))
 
   function parse () {
     var property = prop$.val()
+    var unparsed = input$.val()
     try {
-      var value = eval(input$.val())
-      if (typeof value === 'string') value = '"' + value + '"'
-      input$.removeClass('error')
+      var value = eval(unparsed)
       return [property, value]
     } catch (err) {
-      input$.addClass('error')
-      return [property, null]
+      return [property, '"' + unparsed + '"']
     }
   }
 
@@ -114,6 +136,14 @@ function inputGroup () {
       ls.push(cb)
       return function () {
         ls.splice(index, 1)
+      }
+    },
+    removed: function (cb) {
+      if (typeof cb !== 'function') return _.identity
+      var index = ls.length
+      rs.push(cb)
+      return function () {
+        rs.splice(index, 1)
       }
     }
   }

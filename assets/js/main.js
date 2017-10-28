@@ -16,7 +16,7 @@ module.exports = function (filters) {
   }
 }
 
-},{"../utils/pipe":13}],2:[function(require,module,exports){
+},{"../utils/pipe":14}],2:[function(require,module,exports){
 var canvas = document.getElementById('loader')
 var zoom = require('./ui/zoom')
 var toast = require('./ui/toast')
@@ -25,29 +25,31 @@ var loader = require('./ui/loader')(canvas)
 var flow = require('./mixpanel').flow
 var format = require('./utils/format')
 var pipe = require('./utils/pipe')
-var qs = require('./utils/qs')
+var hash = require('./utils/hash')
 var visualize = require('./visualize')
 
 $(function () {
-  var query = qs.get()
+  var query = hash.get()
   var initial = {
     event: query.event || '',
-    from: query.from ? new Date(Number(query.from)) : '',
-    to: query.to ? new Date(Number(query.to)) : '',
+    from: query.from ? new Date(Number(query.from)) : new Date(),
+    to: query.to ? new Date(Number(query.to)) : new Date(),
     depth: Number(query.depth) || 3,
     breadth: Number(query.breadth) || 3,
-    filters: query.filters ? JSON.parse(query.filters) : []
+    filters: query.filters || []
   }
 
-  // visualizer(initial)
   controls(initial, function (params) {
     console.log(params)
     visualizer(params)
-    qs.set(Object.assign({}, params, {
+    hash.set(Object.assign({}, params, {
       from: params.from.valueOf(),
-      to: params.to.valueOf(),
-      filters: JSON.stringify(params.filters)
+      to: params.to.valueOf()
     }))
+  })
+  .then(function () {
+    if (!initial.event) return loader.stop()
+    visualizer(initial)
   })
 });
 
@@ -164,7 +166,7 @@ function validProp (prop) {
   return !ignore[prop]
 }
 
-},{"./mixpanel":6,"./ui/controls":8,"./ui/loader":9,"./ui/toast":10,"./ui/zoom":11,"./utils/format":12,"./utils/pipe":13,"./utils/qs":14,"./visualize":15}],3:[function(require,module,exports){
+},{"./mixpanel":6,"./ui/controls":8,"./ui/loader":9,"./ui/toast":10,"./ui/zoom":11,"./utils/format":12,"./utils/hash":13,"./utils/pipe":14,"./visualize":16}],3:[function(require,module,exports){
 module.exports = function define (d, l, fn) {
   if (!d) return ''
   return Object.keys(d)
@@ -304,6 +306,8 @@ module.exports = function (script) {
 }
 
 },{}],8:[function(require,module,exports){
+var wait = require('../utils/wait')
+
 module.exports = function (params, changed) {
   var onChange = throttle(changed, 300)
   var range$ = $('#datePicker').MPDatepicker()
@@ -312,25 +316,31 @@ module.exports = function (params, changed) {
   var breadth$ = $('#breadthPicker')
   var add$ = $('#add')
 
-  setTimeout(function () {
-    // SET DEFAULTS
+  return Promise.resolve()
+  .then(wait(1000))
+  .then(function () {
     range$.val(params)
     event$.val(params.event)
     depth$.val(params.depth)
     breadth$.val(params.breadth)
-    _.map(params.filters).map(function (_, i) {
-      addFilter(i)
-    })
-
+    return Promise.all(_.map(params.filters, function (_, i) {
+      return addFilter(i)
+    }))
+  })
+  .then(wait(1000))
+  .then(function () {
     // LISTENERS
     range$.on('change', setRange)
     event$.on('change', setEvent)
     depth$.on('change', setParam('depth'))
     breadth$.on('change', setParam('breadth'))
     add$.on('click', function () {
-      addFilter(params.filters.length)
+      var i = params.filters.length
+      addFilter(i).then(function () {
+        console.log('Added')
+      })
     })
-  }, 1000)
+  })
 
   function setRange (ev, range) {
     params.from = range.from
@@ -352,14 +362,24 @@ module.exports = function (params, changed) {
   function addFilter (i) {
     var group = inputGroup()
     group.setEvent(params.event)
-    setTimeout(function () {
-      group.val(params.filters[i])
-    }, 1000)
-    group.changed(function (value) {
-      params.filters[i] = value
-      onChange(params)
-    })
     $('#props').append(group[0])
+
+    return Promise.resolve()
+    .then(wait(1000))
+    .then(function () {
+      group.val(params.filters[i])
+    })
+    .then(wait(1000))
+    .then(function () {
+      group.changed(function (value) {
+        params.filters[i] = value
+        onChange(params)
+      })
+      group.removed(function () {
+        params.filters.splice(i, 1)
+        onChange(params)
+      })
+    })
   }
 }
 
@@ -374,33 +394,37 @@ function throttle (cb, time) {
 }
 
 function inputGroup () {
-  var ls = []
+  var ls = [], rs = []
   var group$ = $('<div>').addClass('group')
   var prop$ = $('<div>').addClass('selecter').MPPropertySelect()
   var cont$ = $('<div>').attr('class', 'selecter mixpanel-platform-input-date mixpanel-platform-input')
   var input$ = $('<input>').attr('class', 'rounded_dropdown_label dropdown_label_widget')
+  var remove$ = $('<div>').attr('class', 'selecter del-btn').append($('<i>').attr('class', 'fa fa-trash-o fa-lg'))
   var dispatch = throttle(function () {
     var value = parse()
     ls.map(function (cb) {
       cb(value)
     })
   }, 300)
+  var remove = function () {
+    group$.remove()
+    rs.map(function (cb) { cb() })
+  }
 
   prop$.on('change', dispatch)
   input$.on('change', dispatch)
+  remove$.on('click', remove)
   cont$.append(input$)
-  group$.append(prop$).append(cont$).append($('<div>').css('clear', 'both'))
+  group$.append(prop$).append(cont$).append(remove$).append($('<div>').css('clear', 'both'))
 
   function parse () {
     var property = prop$.val()
+    var unparsed = input$.val()
     try {
-      var value = eval(input$.val())
-      if (typeof value === 'string') value = '"' + value + '"'
-      input$.removeClass('error')
+      var value = eval(unparsed)
       return [property, value]
     } catch (err) {
-      input$.addClass('error')
-      return [property, null]
+      return [property, '"' + unparsed + '"']
     }
   }
 
@@ -421,13 +445,20 @@ function inputGroup () {
       return function () {
         ls.splice(index, 1)
       }
+    },
+    removed: function (cb) {
+      if (typeof cb !== 'function') return _.identity
+      var index = ls.length
+      rs.push(cb)
+      return function () {
+        rs.splice(index, 1)
+      }
     }
   }
 }
 
-},{}],9:[function(require,module,exports){
+},{"../utils/wait":15}],9:[function(require,module,exports){
 module.exports = function (canvas) {
-  render(canvas)
   return {
     start: start(canvas),
     stop: stop(canvas)
@@ -444,360 +475,6 @@ function start (c) {
   return function () {
     $(c).css('display', 'inline-block')
   }
-}
-
-function render (c) {
-  var w = c.width = window.innerWidth,
-  h = c.height = window.innerHeight,
-  ctx = c.getContext( '2d' ),
-
-  opts = {
-
-    range: 180,
-    baseConnections: 3,
-    addedConnections: 5,
-    baseSize: 5,
-    minSize: 1,
-    dataToConnectionSize: .4,
-    sizeMultiplier: .7,
-    allowedDist: 40,
-    baseDist: 40,
-    addedDist: 30,
-    connectionAttempts: 100,
-
-    dataToConnections: 1,
-    baseSpeed: .04,
-    addedSpeed: .05,
-    baseGlowSpeed: .4,
-    addedGlowSpeed: .4,
-
-    rotVelX: .003,
-    rotVelY: .002,
-
-    repaintColor: '#fff',
-    connectionColor: 'hsla(200,60%,light%,alp)',
-    rootColor: 'hsla(0,60%,light%,alp)',
-    endColor: 'hsla(160,20%,light%,alp)',
-    dataColor: 'hsla(40,80%,light%,alp)',
-
-    wireframeWidth: .4,
-    wireframeColor: '#88f',
-
-    depth: 250,
-    focalLength: 250,
-    vanishPoint: {
-      x: w / 2,
-      y: h / 2
-    }
-  },
-
-  squareRange = opts.range * opts.range,
-  squareAllowed = opts.allowedDist * opts.allowedDist,
-  mostDistant = opts.depth + opts.range,
-  sinX = sinY = 0,
-  cosX = cosY = 0,
-
-  connections = [],
-  toDevelop = [],
-  data = [],
-  all = [],
-  tick = 0,
-  totalProb = 0,
-
-  animating = false,
-
-  Tau = Math.PI * 2;
-
-  ctx.fillStyle = '#fff';
-  ctx.fillRect( 0, 0, w, h );
-  ctx.fillStyle = '#fff';
-  ctx.font = '50px Verdana';
-  ctx.fillText( 'Calculating Nodes', w / 2 - ctx.measureText( 'Calculating Nodes' ).width / 2, h / 2 - 15 );
-
-  window.setTimeout( init, 4 ); // to render the loading screen
-
-  function init(){
-
-  connections.length = 0;
-  data.length = 0;
-  all.length = 0;
-  toDevelop.length = 0;
-
-  var connection = new Connection( 0, 0, 0, opts.baseSize );
-  connection.step = Connection.rootStep;
-  connections.push( connection );
-  all.push( connection );
-  connection.link();
-
-  while( toDevelop.length > 0 ){
-
-  toDevelop[ 0 ].link();
-  toDevelop.shift();
-  }
-
-  if( !animating ){
-  animating = true;
-  anim();
-  }
-  }
-  function Connection( x, y, z, size ){
-
-  this.x = x;
-  this.y = y;
-  this.z = z;
-  this.size = size;
-
-  this.screen = {};
-
-  this.links = [];
-  this.probabilities = [];
-  this.isEnd = false;
-
-  this.glowSpeed = opts.baseGlowSpeed + opts.addedGlowSpeed * Math.random();
-  }
-  Connection.prototype.link = function(){
-
-  if( this.size < opts.minSize )
-  return this.isEnd = true;
-
-  var links = [],
-    connectionsNum = opts.baseConnections + Math.random() * opts.addedConnections |0,
-    attempt = opts.connectionAttempts,
-
-    alpha, beta, len,
-    cosA, sinA, cosB, sinB,
-    pos = {},
-    passedExisting, passedBuffered;
-
-  while( links.length < connectionsNum && --attempt > 0 ){
-
-  alpha = Math.random() * Math.PI;
-  beta = Math.random() * Tau;
-  len = opts.baseDist + opts.addedDist * Math.random();
-
-  cosA = Math.cos( alpha );
-  sinA = Math.sin( alpha );
-  cosB = Math.cos( beta );
-  sinB = Math.sin( beta );
-
-  pos.x = this.x + len * cosA * sinB;
-  pos.y = this.y + len * sinA * sinB;
-  pos.z = this.z + len *        cosB;
-
-  if( pos.x*pos.x + pos.y*pos.y + pos.z*pos.z < squareRange ){
-
-    passedExisting = true;
-    passedBuffered = true;
-    for( var i = 0; i < connections.length; ++i )
-      if( squareDist( pos, connections[ i ] ) < squareAllowed )
-        passedExisting = false;
-
-    if( passedExisting )
-      for( var i = 0; i < links.length; ++i )
-        if( squareDist( pos, links[ i ] ) < squareAllowed )
-          passedBuffered = false;
-
-    if( passedExisting && passedBuffered )
-      links.push( { x: pos.x, y: pos.y, z: pos.z } );
-
-  }
-
-  }
-
-  if( links.length === 0 )
-  this.isEnd = true;
-  else {
-  for( var i = 0; i < links.length; ++i ){
-
-    var pos = links[ i ],
-        connection = new Connection( pos.x, pos.y, pos.z, this.size * opts.sizeMultiplier );
-
-    this.links[ i ] = connection;
-    all.push( connection );
-    connections.push( connection );
-  }
-  for( var i = 0; i < this.links.length; ++i )
-    toDevelop.push( this.links[ i ] );
-  }
-  }
-  Connection.prototype.step = function(){
-
-  this.setScreen();
-  this.screen.color = ( this.isEnd ? opts.endColor : opts.connectionColor ).replace( 'light', 30 + ( ( tick * this.glowSpeed ) % 30 ) ).replace( 'alp', .2 + ( 1 - this.screen.z / mostDistant ) * .8 );
-
-  for( var i = 0; i < this.links.length; ++i ){
-  ctx.moveTo( this.screen.x, this.screen.y );
-  ctx.lineTo( this.links[ i ].screen.x, this.links[ i ].screen.y );
-  }
-  }
-  Connection.rootStep = function(){
-  this.setScreen();
-  this.screen.color = opts.rootColor.replace( 'light', 30 + ( ( tick * this.glowSpeed ) % 30 ) ).replace( 'alp', ( 1 - this.screen.z / mostDistant ) * .8 );
-
-  for( var i = 0; i < this.links.length; ++i ){
-  ctx.moveTo( this.screen.x, this.screen.y );
-  ctx.lineTo( this.links[ i ].screen.x, this.links[ i ].screen.y );
-  }
-  }
-  Connection.prototype.draw = function(){
-  ctx.fillStyle = this.screen.color;
-  ctx.beginPath();
-  ctx.arc( this.screen.x, this.screen.y, this.screen.scale * this.size, 0, Tau );
-  ctx.fill();
-  }
-  function Data( connection ){
-
-  this.glowSpeed = opts.baseGlowSpeed + opts.addedGlowSpeed * Math.random();
-  this.speed = opts.baseSpeed + opts.addedSpeed * Math.random();
-
-  this.screen = {};
-
-  this.setConnection( connection );
-  }
-  Data.prototype.reset = function(){
-
-  this.setConnection( connections[ 0 ] );
-  this.ended = 2;
-  }
-  Data.prototype.step = function(){
-
-  this.proportion += this.speed;
-
-  if( this.proportion < 1 ){
-  this.x = this.ox + this.dx * this.proportion;
-  this.y = this.oy + this.dy * this.proportion;
-  this.z = this.oz + this.dz * this.proportion;
-  this.size = ( this.os + this.ds * this.proportion ) * opts.dataToConnectionSize;
-  } else
-  this.setConnection( this.nextConnection );
-
-  this.screen.lastX = this.screen.x;
-  this.screen.lastY = this.screen.y;
-  this.setScreen();
-  this.screen.color = opts.dataColor.replace( 'light', 40 + ( ( tick * this.glowSpeed ) % 50 ) ).replace( 'alp', .2 + ( 1 - this.screen.z / mostDistant ) * .6 );
-
-  }
-  Data.prototype.draw = function(){
-
-  if( this.ended )
-  return --this.ended; // not sre why the thing lasts 2 frames, but it does
-
-  ctx.beginPath();
-  ctx.strokeStyle = this.screen.color;
-  ctx.lineWidth = this.size * this.screen.scale;
-  ctx.moveTo( this.screen.lastX, this.screen.lastY );
-  ctx.lineTo( this.screen.x, this.screen.y );
-  ctx.stroke();
-  }
-  Data.prototype.setConnection = function( connection ){
-
-  if( connection.isEnd )
-  this.reset();
-
-  else {
-
-  this.connection = connection;
-  this.nextConnection = connection.links[ connection.links.length * Math.random() |0 ];
-
-  this.ox = connection.x; // original coordinates
-  this.oy = connection.y;
-  this.oz = connection.z;
-  this.os = connection.size; // base size
-
-  this.nx = this.nextConnection.x; // new
-  this.ny = this.nextConnection.y;
-  this.nz = this.nextConnection.z;
-  this.ns = this.nextConnection.size;
-
-  this.dx = this.nx - this.ox; // delta
-  this.dy = this.ny - this.oy;
-  this.dz = this.nz - this.oz;
-  this.ds = this.ns - this.os;
-
-  this.proportion = 0;
-  }
-  }
-  Connection.prototype.setScreen = Data.prototype.setScreen = function(){
-
-  var x = this.x,
-    y = this.y,
-    z = this.z;
-
-  // apply rotation on X axis
-  var Y = y;
-  y = y * cosX - z * sinX;
-  z = z * cosX + Y * sinX;
-
-  // rot on Y
-  var Z = z;
-  z = z * cosY - x * sinY;
-  x = x * cosY + Z * sinY;
-
-  this.screen.z = z;
-
-  // translate on Z
-  z += opts.depth;
-
-  this.screen.scale = opts.focalLength / z;
-  this.screen.x = opts.vanishPoint.x + x * this.screen.scale;
-  this.screen.y = opts.vanishPoint.y + y * this.screen.scale;
-
-  }
-  function squareDist( a, b ){
-
-  var x = b.x - a.x,
-    y = b.y - a.y,
-    z = b.z - a.z;
-
-  return x*x + y*y + z*z;
-  }
-
-  function anim(){
-
-  window.requestAnimationFrame( anim );
-
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = opts.repaintColor;
-  ctx.fillRect( 0, 0, w, h );
-
-  ++tick;
-
-  var rotX = tick * opts.rotVelX,
-    rotY = tick * opts.rotVelY;
-
-  cosX = Math.cos( rotX );
-  sinX = Math.sin( rotX );
-  cosY = Math.cos( rotY );
-  sinY = Math.sin( rotY );
-
-  if( data.length < connections.length * opts.dataToConnections ){
-  var datum = new Data( connections[ 0 ] );
-  data.push( datum );
-  all.push( datum );
-  }
-
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.beginPath();
-  ctx.lineWidth = opts.wireframeWidth;
-  ctx.strokeStyle = opts.wireframeColor;
-  all.map( function( item ){ item.step(); } );
-  ctx.stroke();
-  ctx.globalCompositeOperation = 'source-over';
-  all.sort( function( a, b ){ return b.screen.z - a.screen.z } );
-  all.map( function( item ){ item.draw(); } );
-
-  /*ctx.beginPath();
-  ctx.strokeStyle = 'red';
-  ctx.arc( opts.vanishPoint.x, opts.vanishPoint.y, opts.range * opts.focalLength / opts.depth, 0, Tau );
-  ctx.stroke();*/
-  }
-
-  window.addEventListener( 'resize', function(){
-
-  opts.vanishPoint.x = ( w = c.width = window.innerWidth ) / 2;
-  opts.vanishPoint.y = ( h = c.height = window.innerHeight ) / 2;
-  ctx.fillRect( 0, 0, w, h );
-  });
 }
 
 },{}],10:[function(require,module,exports){
@@ -842,6 +519,25 @@ module.exports.date = function (d) {
 }
 
 },{}],13:[function(require,module,exports){
+module.exports = {
+  get,
+  set
+}
+
+function get () {
+  try {
+    var hash = (window.location.hash || '').slice(1)
+    return JSON.parse(hash)
+  } catch (err) {
+    return {}
+  }
+}
+
+function set (hash) {
+  window.location.hash = JSON.stringify(Object.assign(get(), hash))
+}
+
+},{}],14:[function(require,module,exports){
 module.exports = function pipe (fns) {
   return function (val) {
     return [].concat(fns).reduce(function (acc, fn) {
@@ -850,36 +546,18 @@ module.exports = function pipe (fns) {
   }
 }
 
-},{}],14:[function(require,module,exports){
-module.exports = {
-  get,
-  set
-}
-
-function set (qs) {
-  var query = Object.assign(get(), qs)
-  window.location.hash = Object.keys(query)
-  .map(function (key) {
-    return key + '=' + query[key]
-  })
-  .join('&')
-}
-
-function get () {
-  return (window.location.hash || '')
-  .slice(1)
-  .split('&')
-  .map(function (pair) {
-    return pair.split('=')
-  })
-  .reduce(function (acc, pair) {
-    if (!pair[0]) return acc
-    acc[pair[0]] = pair[1]
-    return acc
-  }, {})
-}
-
 },{}],15:[function(require,module,exports){
+module.exports = function (time) {
+  return function (val) {
+    return new Promise(function (res) {
+      setTimeout(function () {
+        res(val)
+      }, time)
+    })
+  }
+}
+
+},{}],16:[function(require,module,exports){
 var filterFlow = require('./filters/flow')
 var mermaid = require('./mermaid')
 
