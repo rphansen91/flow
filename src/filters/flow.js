@@ -1,3 +1,5 @@
+var pipe = require('../utils/pipe')
+
 module.exports = function (filters) {
   var modifier = pipe(filters)
   return function filter (d) {
@@ -10,13 +12,5 @@ module.exports = function (filters) {
       g[key].next = next
       return g
     }, {})
-  }
-}
-
-function pipe (fns) {
-  return function (val) {
-    return [].concat(fns).reduce(function (acc, fn) {
-      return fn(acc)
-    }, val)
   }
 }

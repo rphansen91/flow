@@ -10,7 +10,7 @@ module.exports = function (params) {
       flow.current = flow.current || flow
       for (var i = 0; i < events.length; i++) {
         var e = events[i]
-        if (flow.depth === 0 && e.name != '${params.event}') {
+        if (flow.depth === 0 && (e.name != '${params.event}' ${_.reduce(params.filters, function (acc, f) { return acc += ' || e.properties.' + f[0] + ' !== ' + f[1] }, '')})) {
           continue
         }
         if (flow.depth === ${params.depth}) {

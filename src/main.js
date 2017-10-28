@@ -1,60 +1,47 @@
+var canvas = document.getElementById('loader')
 var zoom = require('./ui/zoom')
+var toast = require('./ui/toast')
+var controls = require('./ui/controls')
+var loader = require('./ui/loader')(canvas)
 var flow = require('./mixpanel').flow
 var format = require('./utils/format')
+var pipe = require('./utils/pipe')
+var qs = require('./utils/qs')
 var visualize = require('./visualize')
-var worker = new Worker('./assets/js/worker.js')
 
 $(function () {
-  var params = { from: '', to: '', event: '', depth: 3, breadth: 3 }
+  var query = qs.get()
+  var initial = {
+    event: query.event || '',
+    from: query.from ? new Date(Number(query.from)) : '',
+    to: query.to ? new Date(Number(query.to)) : '',
+    depth: Number(query.depth) || 3,
+    breadth: Number(query.breadth) || 3,
+    filters: query.filters ? JSON.parse(query.filters) : []
+  }
 
-  $('#datePicker').MPDatepicker().on('change', function(event, range) {
-    params.from = range.from
-    params.to = range.to
-    query()
-  })
-
-  $('#eventPicker').MPEventSelect().on('change', function(e, event) {
-    params.event = event
-    query()
-  });
-
-  $('#depthPicker').on('change', function () {
-    params.depth = $('#depthPicker').val()
-    query()
-  })
-
-  $('#breadthPicker').on('change', function () {
-    params.breadth = $('#breadthPicker').val()
-    query()
-  })
-
-  $('#depthPicker').val(params.depth)
-  $('#breadthPicker').val(params.breadth)
-
-  var initialDate = $('#datePicker').val()
-  params.from = initialDate.from
-  params.to = initialDate.to
-
-  function query () {
-    if (!valid(params)) return
+  // visualizer(initial)
+  controls(initial, function (params) {
+    console.log(params)
     visualizer(params)
-  }
-
-  function valid () {
-    return Object.keys(params).every(function (key) {
-      return !!params[key]
-    })
-  }
+    qs.set(Object.assign({}, params, {
+      from: params.from.valueOf(),
+      to: params.to.valueOf(),
+      filters: JSON.stringify(params.filters)
+    }))
+  })
 });
 
 function visualizer (params) {
   var labels = initLabels()
+  loader.start()
 
   return flow({
     from_date: format.date(params.from),
     to_date: format.date(params.to),
     event: params.event,
-    depth: params.depth
+    depth: params.depth,
+    filters: params.filters
   })
   .then(function (data) {
     return data[0]
@@ -62,7 +49,8 @@ function visualizer (params) {
   .then(visualize(params, labels.initLabel))
   .then(render($('#flow')))
   .then(labels.initAll)
-  .catch(displayError($('#error')))
+  .then(loader.stop)
+  .catch(pipe([displayError(), loader.stop]))
 }
 
 function render (container$) {
@@ -73,9 +61,10 @@ function render (container$) {
   }
 }
 
-function displayError (container$) {
+function displayError () {
   return function (err) {
     console.log(err)
+    toast.error(err.message)
   }
 }
 
@@ -83,9 +72,10 @@ function initLabels () {
   var labels = []
 
   return {
-    initLabel: function (layer, events) {
+    initLabel: function (layer, name, events) {
       labels.push({
         layer,
+        name,
         events
       })
     },
@@ -127,12 +117,13 @@ function displayLabel (label, element) {
   })
 
   var chart = $('<div>').MPChart({ chartType: 'bar' })
-  var selecter = $('<div>').MPSelect({items: items})
+  var selecter = $('<div>').MPSelect({ items: items })
   selecter.css({ marginTop: 14 })
 
   element.html('')
+  element.append($('<div>').addClass('title').html('<em>' + label.name + '</em>'))
   element.append(chart)
-  element.append(selecter)
+  if (items.length) element.append(selecter)
 
   handle(items[0] && items[0].value)
   selecter.on('change', function (e, selected) {
@@ -141,8 +132,9 @@ function displayLabel (label, element) {
 
   function handle (selected) {
     chart.MPChart('setData', label.events.reduce(function (acc, c) {
-      if (!acc[c[selected]]) acc[c[selected]] = 0
-      acc[c[selected]]++
+      var key = c[selected] || label.name
+      if (!acc[key]) acc[key] = 0
+      acc[key]++
       return acc
     }, {}));
   }

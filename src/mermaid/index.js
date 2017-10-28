@@ -5,11 +5,8 @@ module.exports = function (direction='TD', data, cb) {
   return Promise.resolve()
   .then(function () {
     var definition = defineGraph(data, '', cb)
+    if (!definition) throw new Error('Could not build diagram, no data found')
     return 'graph ' + direction + '\n' + definition
-  })
-  .then(function (graph) {
-    mermaid.parse(graph)
-    return graph
   })
   .then(function (graph) {
     return new Promise(function (res) {

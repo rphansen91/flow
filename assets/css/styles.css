@@ -1,6 +1,22 @@
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
+body {}
+
+canvas {
+	position: absolute;
+	top: 0;
+	left: 0;
+}
+
+.content {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  top: 0;
+  left: 0;
+}
+
+#flow {
+  height: 100%;
+  padding-top: 60px;
 }
 
 #flow .node circle, #flow .node ellipse, #flow .node polygon, #flow .node rect {
@@ -17,6 +33,54 @@ body {
   margin: auto;
 }
 .modal {
-  width: 60em;
+  width: initial;;
   max-width: 90%;
+}
+
+#toast-container {
+  bottom: 12px;
+  left: 12px;
+  top: unset;
+  right: unset;
+}
+
+.modal .title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #737c93;
+  padding: 8px 0 22px;
+  text-align: center;
+  box-shadow: 0 1px 0 hsla(0,0%,100%,.7);
+}
+
+.selecter {
+  float: left;
+  margin-right: 7px;
+}
+
+.add-btn {
+  background-image: linear-gradient(0deg,#f4f9fd,#fff);
+  border: 1px solid #bdc9d6;
+  border-radius: 50%;
+  box-shadow: 0 1px 1px 0 rgba(0,0,0,.2);
+  height: 28px;
+  margin-left: 2px;
+  padding: 0;
+  width: 28px;
+  text-align: center;
+  vertical-align: middle;
+  line-height: 28px;
+  color: #737c93;
+  cursor: pointer;
+}
+
+#props {
+  padding-top: 7px;
+  padding-left: 14px;
+}
+.group {
+  margin-bottom: 4px;
+}
+.group .error {
+  border: 1px solid #FF4B51;
 }

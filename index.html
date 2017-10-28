@@ -3,30 +3,43 @@
   <head>
     <title>User Flow</title>
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/css/reset.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.css" />
-    <link rel="stylesheet" href="./assets/css/styles.css">
-    <script src="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.js"></script>
-    <script src="https://unpkg.com/mermaid@7.1.0/dist/mermaid.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css">
+
+    <link rel="stylesheet" type="text/css" href="./assets/css/styles.css">
   </head>
   <body>
     <body class="mixpanel-platform-body">
-      <div class="mixpanel-platform-section" style="margin: 0">
-          <div id="eventPicker" style="float: left;"></div>
-          <div id="datePicker" style="float: left;margin-left: 7px;"></div>
-          <div class="mixpanel-platform-input-date mixpanel-platform-input" style="float: left;margin-left: 7px;">
+      <div class="mixpanel-platform-section" style="position: relative; margin: 0;z-index: 1;" >
+          <div id="eventPicker" class="selecter"></div>
+          <div id="datePicker" class="selecter"></div>
+          <div class="selecter mixpanel-platform-input-date mixpanel-platform-input">
               <input id="depthPicker" type="number" step="1" max="10" class="rounded_dropdown_label dropdown_label_widget" />
           </div>
-          <div class="mixpanel-platform-input-date mixpanel-platform-input" style="float: left;margin-left: 7px;">
+          <div class="selecter mixpanel-platform-input-date mixpanel-platform-input">
               <input id="breadthPicker" type="number" step="1" max="10" class="rounded_dropdown_label dropdown_label_widget" />
           </div>
+          <div id="add" class="selecter add-btn">
+              <i class="fa fa-plus fa-lg"></i>
+          </div>
           <div style="clear: both;"></div>
+          <div id="props"></div>
       </div>
-      <div id="flow" style="padding-top: 35px;min-height:100vh;"></div>
+      <div class="content">
+          <div id="flow"></div>
+          <canvas id="loader"></canvas>
+      </div>
       <div id="modal" class="modal"></div>
     </body>
+
+    <script src="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.js"></script>
+    <script src="https://unpkg.com/mermaid@7.1.0/dist/mermaid.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
+
     <script src="./assets/js/jquery.panzoom.js"></script>
     <script src="./assets/js/main.js"></script>
   </body>
