@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 60 60">
+  <path fill="#000" d="M30,0C13.4,0,0,13.4,0,30s13.4,30,30,30s30-13.4,30-30S46.6,0,30,0z M38.4,40.6L30,32.1l-8.2,8.2l-2.1-2.1l8.2-8.2l-7.9-7.9l2.1-2.1l7.9,7.9l8.2-8.2l2.1,2.1L32.1,30l8.4,8.4L38.4,40.6z"/>
+</svg>

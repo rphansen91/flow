@@ -63,7 +63,7 @@ body {}
   margin-right: 7px;
 }
 
-.add-btn, .del-btn {
+.add-btn, .del-btn, .excluder {
   background-image: linear-gradient(0deg,#f4f9fd,#fff);
   border: 1px solid #bdc9d6;
   border-radius: 50%;
@@ -88,4 +88,10 @@ body {}
 }
 .group .error {
   border: 1px solid #FF4B51;
+}
+
+.excluder {
+  margin-top: 14px;
+  margin-right: 8px;
+  float: left;
 }

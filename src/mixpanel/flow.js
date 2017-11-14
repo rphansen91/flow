@@ -4,7 +4,7 @@ module.exports = function (params) {
       from_date: '${params.from_date}',
       to_date: '${params.to_date}',
     })
-    .filter(function(event) { return event.name != 'User Request' })
+    .filter(function(event) { return !_.includes(${JSON.stringify(params.exclude)}, event.name) })
     .groupByUser(function(flow, events) {
       flow = flow || { depth: 0 }
       flow.current = flow.current || flow

@@ -17,7 +17,8 @@ $(function () {
     to: query.to ? new Date(Number(query.to)) : new Date(),
     depth: Number(query.depth) || 3,
     breadth: Number(query.breadth) || 3,
-    filters: query.filters || []
+    filters: query.filters || [],
+    exclude: query.exclude || []
   }
 
   controls(initial, function (params) {
@@ -29,7 +30,10 @@ $(function () {
     }))
   })
   .then(function () {
-    if (!initial.event) return loader.stop()
+    if (!initial.event) {
+      // SHOW TOOLTIP
+      return loader.stop()
+    }
     visualizer(initial)
   })
 });
@@ -43,7 +47,8 @@ function visualizer (params) {
     to_date: format.date(params.to),
     event: params.event,
     depth: params.depth,
-    filters: params.filters
+    filters: params.filters,
+    exclude: params.exclude
   })
   .then(function (data) {
     return data[0]
@@ -72,7 +77,6 @@ function displayError () {
 
 function initLabels () {
   var labels = []
-
   return {
     initLabel: function (layer, name, events) {
       labels.push({
@@ -90,7 +94,7 @@ function initLabels () {
         node.on('mouseleave', setActive(false))
 
         function setActive (bool) {
-          return function () {
+          return function (ev) {
             if (bool) {
               node.attr('class', [original, 'active'].join(' '))
             } else {
@@ -120,12 +124,16 @@ function displayLabel (label, element) {
 
   var chart = $('<div>').MPChart({ chartType: 'bar' })
   var selecter = $('<div>').MPSelect({ items: items })
-  selecter.css({ marginTop: 14 })
+  var excluder = $('<div>').addClass('excluder').attr('node-name', label.name)
+  excluder.html('<i class="fa fa-trash-o fa-lg"></i>')
+  selecter.css({ marginTop: 14, float: 'left' })
 
   element.html('')
   element.append($('<div>').addClass('title').html('<em>' + label.name + '</em>'))
   element.append(chart)
+  element.append(excluder)
   if (items.length) element.append(selecter)
+  excluder.on('click', closeModal)
 
   handle(items[0] && items[0].value)
   selecter.on('change', function (e, selected) {
@@ -140,6 +148,11 @@ function displayLabel (label, element) {
       return acc
     }, {}));
   }
+}
+
+function closeModal () {
+  console.log('close')
+  console.log($.modal.close())
 }
 
 function validProp (prop) {

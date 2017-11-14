@@ -8,6 +8,14 @@ module.exports = function (params, changed) {
   var breadth$ = $('#breadthPicker')
   var add$ = $('#add')
 
+  $(document).on('click', '.excluder', function () {
+    var event = $(this).attr('node-name')
+    if (event) {
+      params.exclude = _.uniq([].concat(params.exclude).concat(event))
+      onChange(params)
+    }
+  })
+
   return Promise.resolve()
   .then(wait(1000))
   .then(function () {
