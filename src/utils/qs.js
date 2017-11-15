@@ -5,7 +5,7 @@ module.exports = {
 
 function set (qs) {
   var query = Object.assign(get(), qs)
-  window.location.hash = Object.keys(query)
+  window.location.search = Object.keys(query)
   .map(function (key) {
     return key + '=' + query[key]
   })
@@ -13,7 +13,7 @@ function set (qs) {
 }
 
 function get () {
-  return (window.location.hash || '')
+  return (window.location.search || '')
   .slice(1)
   .split('&')
   .map(function (pair) {

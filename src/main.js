@@ -142,7 +142,7 @@ function displayLabel (label, element) {
 
   function handle (selected) {
     chart.MPChart('setData', label.events.reduce(function (acc, c) {
-      var key = c[selected] || label.name
+      var key = typeof c[selected] === 'undefined' ? label.name : c[selected]
       if (!acc[key]) acc[key] = 0
       acc[key]++
       return acc
@@ -151,8 +151,7 @@ function displayLabel (label, element) {
 }
 
 function closeModal () {
-  console.log('close')
-  console.log($.modal.close())
+  $.modal.close()
 }
 
 function validProp (prop) {

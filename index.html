@@ -25,12 +25,18 @@
           <div id="add" class="selecter add-btn">
               <i class="fa fa-plus fa-lg"></i>
           </div>
+          <div class="bookmarks">
+            <mp-bookmarks-widget bookmarks="[]" create-disabled="false" has-write-permissions="true"></mp-bookmarks-widget>
+          </div>
           <div style="clear: both;"></div>
           <div id="props"></div>
       </div>
       <div class="content">
           <div id="flow"></div>
           <div id="loader"><img src="./assets/images/loader.svg" /></div>
+      </div>
+      <div class="draggable">
+        <mp-tag-selector></mp-tag-selector>
       </div>
       <div id="modal" class="modal"></div>
     </body>

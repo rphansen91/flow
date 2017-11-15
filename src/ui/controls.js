@@ -1,4 +1,6 @@
 var wait = require('../utils/wait')
+var exclude = require('./exclude')
+var bookmarks = require('./bookmarks')
 
 module.exports = function (params, changed) {
   var onChange = throttle(changed, 300)
@@ -7,40 +9,44 @@ module.exports = function (params, changed) {
   var depth$ = $('#depthPicker')
   var breadth$ = $('#breadthPicker')
   var add$ = $('#add')
+  var exclude$ = exclude($('mp-tag-selector'))
+  var bookmarks$ = bookmarks($('mp-bookmarks-widget'))
+  return initialize()
 
-  $(document).on('click', '.excluder', function () {
-    var event = $(this).attr('node-name')
-    if (event) {
-      params.exclude = _.uniq([].concat(params.exclude).concat(event))
-      onChange(params)
-    }
-  })
-
-  return Promise.resolve()
-  .then(wait(1000))
-  .then(function () {
-    range$.val(params)
-    event$.val(params.event)
-    depth$.val(params.depth)
-    breadth$.val(params.breadth)
-    return Promise.all(_.map(params.filters, function (_, i) {
-      return addFilter(i)
-    }))
-  })
-  .then(wait(1000))
-  .then(function () {
-    // LISTENERS
-    range$.on('change', setRange)
-    event$.on('change', setEvent)
-    depth$.on('change', setParam('depth'))
-    breadth$.on('change', setParam('breadth'))
-    add$.on('click', function () {
-      var i = params.filters.length
-      addFilter(i).then(function () {
-        console.log('Added')
-      })
+  function initialize () {
+    return Promise.resolve()
+    .then(wait(1000))
+    .then(function () {
+      range$.val(params)
+      event$.val(params.event)
+      depth$.val(params.depth)
+      breadth$.val(params.breadth)
+      params.exclude.forEach(event => {
+        exclude$.add(event)
+      });
+      return Promise.all(_.map(params.filters, function (_, i) {
+        return addFilter(i)
+      }))
     })
-  })
+    .then(wait(1000))
+    .then(function () {
+      // LISTENERS
+      exclude$[0].addEventListener('change', setExclude)
+      exclude$[0].addEventListener('save', setExclude)
+      bookmarks$[0].addEventListener('submit', setBookmark)
+      range$.on('change', setRange)
+      event$.on('change', setEvent)
+      depth$.on('change', setParam('depth'))
+      breadth$.on('change', setParam('breadth'))
+      add$.on('click', function () {
+        var i = params.filters.length
+        addFilter(i).then(function () {
+          console.log('Added')
+        })
+      })
+
+    })
+  }
 
   function setRange (ev, range) {
     params.from = range.from
@@ -57,6 +63,25 @@ module.exports = function (params, changed) {
     return function (ev) {
       params[name] = Number($(this).val())
       onChange(params)
+    }
+  }
+  function setExclude (ev) {
+    const newExclude = exclude$.val()
+    if (JSON.stringify(params.exclude) !== JSON.stringify(newExclude)) {
+      params.exclude = newExclude
+      onChange(params)
+    }
+  }
+  function setBookmark (ev) {
+    console.log('set bookmark', ev)
+    switch (ev.detail.action) {
+      case "create": return bookmarks$.add(ev.detail.name, params)
+      case "delete": return bookmarks$.remove(ev.detail.bookmarkId)
+      case "confirm": return bookmarks$.confirm()
+      case "cancel": return bookmarks$.cancel()
+      case "select":
+        params = ev.detail.value.value
+        return initialize()
     }
   }
   function addFilter (i) {

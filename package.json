@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "mixpanel-common": "^0.178.1",
     "mixpanel-jql": "0.0.3"
   }
 }
