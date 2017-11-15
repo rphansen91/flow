@@ -25,8 +25,8 @@ $(function () {
     console.log(params)
     visualizer(params)
     hash.set(Object.assign({}, params, {
-      from: params.from.valueOf().split('T')[0],
-      to: params.to.valueOf().split('T')[0]
+      from: params.from.valueOf(),
+      to: params.to.valueOf()
     }))
   })
   .then(function () {
