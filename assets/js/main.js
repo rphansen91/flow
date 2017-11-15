@@ -34526,6 +34526,7 @@ module.exports = function (element) {
 
 },{"../storage/fb":371,"mixpanel-common":266}],373:[function(require,module,exports){
 var wait = require('../utils/wait')
+var format = require('../utils/format')
 var exclude = require('./exclude')
 var bookmarks = require('./bookmarks')
 
@@ -34544,11 +34545,14 @@ module.exports = function (params, changed) {
     return Promise.resolve()
     .then(wait(1000))
     .then(function () {
-      range$.val(params)
+      range$.val({
+        from: new Date(params.from),
+        to: new Date(params.to),
+      })
       event$.val(params.event)
       depth$.val(params.depth)
       breadth$.val(params.breadth)
-      params.exclude.forEach(event => {
+      _.forEach(params.exclude, event => {
         exclude$.add(event)
       });
       return Promise.all(_.map(params.filters, function (_, i) {
@@ -34709,7 +34713,7 @@ function inputGroup () {
   }
 }
 
-},{"../utils/wait":383,"./bookmarks":372,"./exclude":375}],374:[function(require,module,exports){
+},{"../utils/format":379,"../utils/wait":383,"./bookmarks":372,"./exclude":375}],374:[function(require,module,exports){
 function handle_mousedown(e){
   window.my_dragging = {};
   my_dragging.pageX0 = e.pageX;
@@ -34815,7 +34819,9 @@ module.exports = function (container$) {
 },{}],379:[function(require,module,exports){
 module.exports.date = function (d) {
   var date = new Date(d)
-  return [date.getFullYear(), date.getMonth() + 1, date.getDate()].join('-')
+  var str = [date.getFullYear(), date.getMonth() + 1, date.getDate()].join('-')
+  console.log(date, str)
+  return str
 }
 
 },{}],380:[function(require,module,exports){
